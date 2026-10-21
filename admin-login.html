@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>J Plus Shop V3 - Admin Login</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #eef5fa;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      width: 100%;
+      max-width: 420px;
+      padding: 30px;
+      border-radius: 18px;
+      box-shadow: 0 8px 30px #12345618;
+    }
+    h1 { color: #23658e; margin-bottom: 8px; }
+    p { color: #64748b; }
+    label { display: block; margin-top: 20px; font-weight: bold; }
+    input {
+      width: 100%;
+      padding: 14px;
+      margin-top: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      margin-top: 24px;
+      padding: 15px;
+      background: #2879a5;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 17px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; }
+    #message { margin-top: 18px; color: #b91c1c; }
+    a { display: block; text-align: center; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>J Plus Shop V3</h1>
+    <p>เข้าสู่ระบบสำหรับผู้ดูแลร้าน</p>
+
+    <form id="loginForm">
+      <label for="email">อีเมล</label>
+      <input id="email" type="email" autocomplete="username" required>
+
+      <label for="password">รหัสผ่าน</label>
+      <input id="password" type="password"
+             autocomplete="current-password" required>
+
+      <button id="loginButton" type="submit">
+        เข้าสู่ระบบ Admin
+      </button>
+    </form>
+
+    <p id="message" role="status"></p>
+    <a href="./index.html">กลับหน้าร้านค้า</a>
+  </main>
+
+  <script src="./supabase-config.js"></script>
+  <script>
+    const form = document.getElementById("loginForm");
+    const message = document.getElementById("message");
+    const button = document.getElementById("loginButton");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      message.textContent = "";
+
+      const config = window.JPLUS_SUPABASE_CONFIG;
+      if (!config?.url || !config?.publishableKey) {
+        message.textContent = "ไม่พบการตั้งค่า Supabase";
+        return;
+      }
+
+      button.disabled = true;
+
+      try {
+        const response = await fetch(
+          config.url + "/auth/v1/token?grant_type=password",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": config.publishableKey
+            },
+            body: JSON.stringify({
+              email: document.getElementById("email").value.trim(),
+              password: document.getElementById("password").value
+            })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.access_token) {
+          throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+        }
+
+        const check = await fetch(
+          config.url +
+          "/rest/v1/shop_admins?select=user_id&user_id=eq." +
+          encodeURIComponent(result.user.id),
+          {
+            headers: {
+              "apikey": config.publishableKey,
+              "Authorization": "Bearer " + result.access_token
+            }
+          }
+        );
+
+        if (!check.ok) {
+          throw new Error("ไม่สามารถตรวจสอบสิทธิ์ผู้ดูแลได้");
+        }
+
+        const admins = await check.json();
+
+        if (!Array.isArray(admins) || admins.length === 0) {
+          throw new Error("บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลร้าน");
+        }
+
+        message.style.color = "#15803d";
+        message.textContent = "เข้าสู่ระบบผู้ดูแลสำเร็จ";
+        // ขั้นต่อไปจะเชื่อมไปยังหน้า Admin Dashboard
+        // โดยใช้ระบบจัดการเซสชันที่ปลอดภัย
+      } catch (error) {
+        message.style.color = "#b91c1c";
+        message.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
