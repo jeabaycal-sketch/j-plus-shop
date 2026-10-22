@@ -1,29 +1,21 @@
 <!doctype html>
-<html lang="th">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>J Plus Shop V3 | ตั้งค่าการจัดส่ง</title>
 <style>
-*{box-sizing:border-box}body{font-family:system-ui,'Tahoma',sans-serif;background:#f1f6fb;color:#18314c;margin:0;padding:20px}.wrap{max-width:850px;margin:auto}h1{font-size:1.5rem;margin:0 0 6px}.sub{color:#607589;margin:0 0 20px}.card{background:#fff;padding:22px;border-radius:18px;margin:16px 0;box-shadow:0 4px 20px #1c4c7a12}label{display:block;font-weight:600;margin:12px 0 6px}input[type=email],input[type=password],input[type=number]{width:100%;padding:12px;border:1px solid #cad8e6;border-radius:10px;font-size:1rem}input[type=checkbox]{width:20px;height:20px;vertical-align:middle;accent-color:#087bc1}button{border:0;border-radius:10px;background:#087bc1;color:white;padding:12px 18px;font-size:1rem;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.secondary{background:#617589}.row{display:grid;grid-template-columns:1fr 150px 115px;gap:12px;align-items:end;padding:12px 0;border-bottom:1px solid #e8edf3}.row:last-child{border-bottom:0}.switch{display:flex;align-items:center;gap:10px;font-weight:600;margin:14px 0}.msg{white-space:pre-wrap;padding:12px;border-radius:10px;background:#e9f3fc;margin-top:14px}.error{background:#ffe7e7;color:#9c2121}.muted{font-size:.9rem;color:#6b7d8e}#dashboard{display:none}@media(max-width:600px){.row{grid-template-columns:1fr 1fr}.row .area-name{grid-column:1/-1}} 
-</style>
-<script src="supabase-config.js"></script>
-</head>
-<body><div class="wrap">
-<h1>🚚 ตั้งค่าการจัดส่ง</h1><p class="sub">J Plus Shop V3 · สำหรับผู้ดูแลร้านเท่านั้น</p>
+*{box-sizing:border-box}body{font-family:system-ui,Tahoma,sans-serif;background:#f1f6fb;color:#18314c;margin:0;padding:20px}.wrap{max-width:850px;margin:auto}h1{font-size:1.5rem;margin:0 0 6px}.sub{color:#607589;margin:0 0 20px}.card{background:white;padding:22px;border-radius:18px;margin:16px 0;box-shadow:0 4px 20px #1c4c7a12}label{display:block;font-weight:600;margin:12px 0 6px}input[type=email],input[type=password],input[type=number],input[type=text]{width:100%;padding:12px;border:1px solid #cad8e6;border-radius:10px;font-size:1rem}input[type=checkbox]{width:20px;height:20px;vertical-align:middle;accent-color:#087bc1}button{border:0;border-radius:10px;background:#087bc1;color:white;padding:12px 18px;font-size:1rem;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.secondary{background:#617589}.row{display:grid;grid-template-columns:minmax(0,1fr) 150px 115px;gap:12px;align-items:end;padding:12px 0;border-bottom:1px solid #e8edf3}.row:last-child{border-bottom:0}.switch{display:flex;align-items:center;gap:10px;font-weight:600;margin:14px 0}.msg{white-space:pre-wrap;padding:12px;border-radius:10px;background:#e9f3fc;margin-top:14px}.error{background:#ffe7e7;color:#9c2121}.muted{font-size:.9rem;color:#6b7d8e}#dashboard{display:none}.add-area{display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:12px;align-items:end;margin-top:18px}.new-label{font-weight:700;margin-top:22px}@media(max-width:600px){.row{grid-template-columns:1fr 1fr}.row .area-name{grid-column:1/-1}.add-area{grid-template-columns:1fr 1fr}.add-area button{grid-column:1/-1}}
+</style><script src="supabase-config.js"></script></head>
+<body><div class="wrap"><h1>🚚 ตั้งค่าการจัดส่ง</h1><p class="sub">J Plus Shop V3 · สำหรับผู้ดูแลร้านเท่านั้น</p>
 <section class="card" id="loginBox"><h2>เข้าสู่ระบบเจ้าของร้าน</h2><form id="loginForm"><label for="email">อีเมล</label><input id="email" type="email" autocomplete="username" required><label for="password">รหัสผ่าน</label><input id="password" type="password" autocomplete="current-password" required><p><button id="loginBtn" type="submit">เข้าสู่ระบบ</button></p></form></section>
-<div id="dashboard">
-<section class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><strong>สิทธิ์ผู้ดูแลร้านได้รับการยืนยันแล้ว</strong><button class="secondary" id="logoutBtn">ออกจากระบบ</button></div></section>
+<div id="dashboard"><section class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><strong>สิทธิ์ผู้ดูแลร้านได้รับการยืนยันแล้ว</strong><button class="secondary" id="logoutBtn" type="button">ออกจากระบบ</button></div></section>
 <section class="card"><h2>วิธีรับสินค้า</h2><label class="switch"><input id="pickup" type="checkbox"> เปิดบริการรับที่ร้าน (ฟรี)</label><label class="switch"><input id="local" type="checkbox"> เปิดบริการจัดส่งภายในพื้นที่</label><label class="switch"><input id="parcel" type="checkbox"> เปิดบริการส่งพัสดุ</label><label for="parcelFee">ค่าจัดส่งพัสดุ (บาท)</label><input id="parcelFee" type="number" min="0" max="100000" step="1" required></section>
-<section class="card"><h2>ค่าจัดส่งตามพื้นที่</h2><p class="muted">แก้ราคาและเลือกเปิด–ปิดพื้นที่ได้ หากไม่เห็นพื้นที่ที่ปิดไว้ ต้องเพิ่มสิทธิ์อ่านพื้นที่สำหรับผู้ดูแลร้านก่อน</p><div id="areas"></div></section>
-<section class="card"><button id="saveBtn">บันทึกการตั้งค่า</button><p class="muted">ระบบบันทึกข้อมูลจริงลง Supabase เมื่อได้รับการยืนยันจากเซิร์ฟเวอร์เท่านั้น</p></section>
-</div><div id="message" class="msg" role="status" aria-live="polite">กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลร้าน</div>
-</div>
+<section class="card"><h2>ค่าจัดส่งตามพื้นที่</h2><p class="muted">แก้ชื่อพื้นที่ ราคา และเปิด–ปิดบริการได้ พื้นที่ที่ปิดบริการจะยังคงอยู่ในหน้าผู้ดูแล</p><div id="areas"></div><h3 class="new-label">เพิ่มพื้นที่จัดส่งใหม่</h3><div class="add-area"><div><label for="newAreaName">ชื่อพื้นที่ใหม่</label><input id="newAreaName" type="text" maxlength="100" placeholder="เช่น หินกอง"></div><div><label for="newAreaFee">ค่าจัดส่ง (บาท)</label><input id="newAreaFee" type="number" min="0" max="100000" step="1" value="20"></div><button id="addAreaBtn" type="button">+ เพิ่มพื้นที่</button></div><p class="muted">เมื่อกดเพิ่มพื้นที่ ระบบจะบันทึกพื้นที่ใหม่ลง Supabase ทันที ส่วนการแก้ไขชื่อ ราคา หรือเปิด–ปิดพื้นที่ ให้กด “บันทึกการตั้งค่า” ด้านล่าง</p></section>
+<section class="card"><button id="saveBtn" type="button">บันทึกการตั้งค่า</button><p class="muted">ระบบบันทึกข้อมูลจริงลง Supabase เมื่อได้รับการยืนยันจากเซิร์ฟเวอร์เท่านั้น</p></section></div><div id="message" class="msg" role="status" aria-live="polite">กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลร้าน</div></div>
 <script>
 'use strict';
 const cfg=window.JPLUS_SUPABASE_CONFIG||{};
 const base=(cfg.url||cfg.supabaseUrl||'').replace(/\/$/,'');
 const key=cfg.publishableKey||cfg.anonKey||'';
-let accessToken=null, adminId=null, areas=[];
+let accessToken=null,adminId=null,areas=[];
 const $=id=>document.getElementById(id);
 function notice(s,bad=false){$('message').textContent=s;$('message').className='msg'+(bad?' error':'');}
 function headers(token){return {'apikey':key,'Authorization':'Bearer '+token,'Content-Type':'application/json'};}
@@ -32,25 +24,30 @@ async function request(path,opts={}){
  if(!r.ok){let detail='';try{const e=await r.json();detail=e.message||e.error_description||e.error||'';}catch{}throw new Error('HTTP '+r.status+(detail?' : '+detail:''));}
  if(r.status===204)return null;const t=await r.text();return t?JSON.parse(t):null;
 }
-function setBusy(b){$('saveBtn').disabled=b;$('loginBtn').disabled=b;}
+function setBusy(b){$('saveBtn').disabled=b;$('loginBtn').disabled=b;$('addAreaBtn').disabled=b;}
+function validFee(input,label){const v=Number(input.value);if(!input.value.trim()||!Number.isInteger(v)||v<0||v>100000)throw new Error(label+' ต้องเป็นจำนวนเต็มตั้งแต่ 0 ถึง 100,000 บาท');return v;}
+function validName(input,label){const n=input.value.trim();if(!n||n.length>100)throw new Error(label+' ต้องมีความยาว 1–100 ตัวอักษร');return n;}
 async function loadData(){
  const [settings,areaRows]=await Promise.all([
- request('/rest/v1/shop_settings?select=setting_key,setting_value'),
- request('/rest/v1/shop_delivery_areas?select=id,area_name,delivery_fee,is_enabled&order=id.asc')]);
+  request('/rest/v1/shop_settings?select=setting_key,setting_value'),
+  request('/rest/v1/shop_delivery_areas?select=id,area_name,delivery_fee,is_enabled&order=id.asc')]);
  const s=Object.fromEntries(settings.map(x=>[x.setting_key,Number(x.setting_value)]));
  $('pickup').checked=s.pickup_enabled===1;$('local').checked=s.local_delivery_enabled===1;
  $('parcel').checked=s.parcel_enabled===1;$('parcelFee').value=s.parcel_fee??40;
  areas=areaRows;const host=$('areas');host.replaceChildren();
  for(const a of areas){
   const row=document.createElement('div');row.className='row';
-  const name=document.createElement('strong');name.className='area-name';name.textContent=a.area_name;
+  const nameWrap=document.createElement('div');nameWrap.className='area-name';
+  const nameLabel=document.createElement('label');nameLabel.textContent='ชื่อพื้นที่';
+  const name=document.createElement('input');name.type='text';name.maxLength=100;name.required=true;name.value=a.area_name;name.dataset.areaNameId=a.id;
+  nameWrap.append(nameLabel,name);
   const feeWrap=document.createElement('div');const feeLabel=document.createElement('label');feeLabel.textContent='ค่าจัดส่ง (บาท)';
   const fee=document.createElement('input');fee.type='number';fee.min='0';fee.max='100000';fee.step='1';fee.required=true;fee.value=a.delivery_fee;fee.dataset.areaId=a.id;
   feeWrap.append(feeLabel,fee);
   const toggleWrap=document.createElement('label');toggleWrap.className='switch';
   const toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=a.is_enabled;toggle.dataset.toggleId=a.id;
   toggleWrap.append(toggle,document.createTextNode('เปิดบริการ'));
-  row.append(name,feeWrap,toggleWrap);host.append(row);
+  row.append(nameWrap,feeWrap,toggleWrap);host.append(row);
  }
 }
 $('loginForm').addEventListener('submit',async e=>{
@@ -69,18 +66,38 @@ $('loginForm').addEventListener('submit',async e=>{
 $('logoutBtn').addEventListener('click',()=>{accessToken=null;adminId=null;areas=[];$('dashboard').style.display='none';$('loginBox').style.display='block';notice('ออกจากระบบแล้ว');});
 $('saveBtn').addEventListener('click',async()=>{
  if(!accessToken||!adminId)return notice('กรุณาเข้าสู่ระบบใหม่',true);
- const parcelFee=Number($('parcelFee').value);
- if(!$('parcelFee').value.trim()||!Number.isInteger(parcelFee)||parcelFee<0||parcelFee>100000)return notice('ค่าจัดส่งพัสดุต้องเป็นจำนวนเต็มตั้งแต่ 0 ถึง 100,000 บาท',true);
+ let parcelFee,areaChanges;
+ try{
+  parcelFee=validFee($('parcelFee'),'ค่าจัดส่งพัสดุ');areaChanges=[];
+  const seen=new Set();
+  for(const a of areas){
+   const name=validName(document.querySelector('[data-area-name-id="'+a.id+'"]'),'ชื่อพื้นที่');
+   const nameKey=name.toLocaleLowerCase('th');if(seen.has(nameKey))throw new Error('มีชื่อพื้นที่ซ้ำกัน: '+name);seen.add(nameKey);
+   const fee=validFee(document.querySelector('[data-area-id="'+a.id+'"]'),'ค่าจัดส่งพื้นที่ '+name);
+   const toggle=document.querySelector('[data-toggle-id="'+a.id+'"]');
+   areaChanges.push({id:a.id,area_name:name,delivery_fee:fee,is_enabled:toggle.checked});
+  }
+ }catch(err){return notice(err.message,true);}
  const changes=[['pickup_enabled',$('pickup').checked?1:0],['local_delivery_enabled',$('local').checked?1:0],['parcel_enabled',$('parcel').checked?1:0],['parcel_fee',parcelFee]];
- const areaChanges=[];
- for(const a of areas){const feeInput=document.querySelector('[data-area-id="'+a.id+'"]');const toggle=document.querySelector('[data-toggle-id="'+a.id+'"]');const fee=Number(feeInput.value);
-  if(!feeInput.value.trim()||!Number.isInteger(fee)||fee<0||fee>100000)return notice('ค่าจัดส่งพื้นที่ '+a.area_name+' ต้องเป็นจำนวนเต็มตั้งแต่ 0 ถึง 100,000 บาท',true);
-  areaChanges.push({id:a.id,delivery_fee:fee,is_enabled:toggle.checked});}
  setBusy(true);notice('กำลังบันทึกข้อมูล...');
  try{
   for(const [k,v] of changes)await request('/rest/v1/shop_settings?setting_key=eq.'+encodeURIComponent(k),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({setting_value:v})});
-  for(const a of areaChanges)await request('/rest/v1/shop_delivery_areas?id=eq.'+encodeURIComponent(a.id),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({delivery_fee:a.delivery_fee,is_enabled:a.is_enabled})});
+  for(const a of areaChanges)await request('/rest/v1/shop_delivery_areas?id=eq.'+encodeURIComponent(a.id),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({area_name:a.area_name,delivery_fee:a.delivery_fee,is_enabled:a.is_enabled})});
   await loadData();notice('บันทึกข้อมูลลง Supabase แล้ว กรุณาตรวจสอบว่าค่าที่แสดงตรงกับที่ตั้งไว้');
  }catch(err){notice('บันทึกไม่ครบหรือเกิดข้อผิดพลาด: '+err.message+' กรุณาโหลดข้อมูลใหม่และตรวจสอบ',true);}finally{setBusy(false);}
+});
+$('addAreaBtn').addEventListener('click',async()=>{
+ if(!accessToken||!adminId)return notice('กรุณาเข้าสู่ระบบใหม่',true);
+ let name,fee;
+ try{
+  name=validName($('newAreaName'),'ชื่อพื้นที่ใหม่');fee=validFee($('newAreaFee'),'ค่าจัดส่งพื้นที่ใหม่');
+  if(areas.some(a=>a.area_name.trim().toLocaleLowerCase('th')===name.toLocaleLowerCase('th')))throw new Error('ชื่อพื้นที่นี้มีอยู่แล้ว');
+ }catch(err){return notice(err.message,true);}
+ setBusy(true);notice('กำลังเพิ่มพื้นที่ใหม่...');
+ try{
+  const created=await request('/rest/v1/shop_delivery_areas',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({area_name:name,delivery_fee:fee,is_enabled:true})});
+  if(!Array.isArray(created)||created.length!==1)throw new Error('ไม่สามารถยืนยันการเพิ่มพื้นที่จากเซิร์ฟเวอร์ได้');
+  $('newAreaName').value='';await loadData();notice('เพิ่มพื้นที่ '+name+' สำเร็จแล้ว');
+ }catch(err){notice('เพิ่มพื้นที่ไม่สำเร็จ: '+err.message,true);}finally{setBusy(false);}
 });
 </script></body></html>
