@@ -48,4 +48,100 @@
 })();
 </script>
   
-  </body></html>
+  
+<!-- J Plus Shop V3: Supabase-controlled shipping (read-only; checkout remains disabled) -->
+<script>
+(function () {
+  'use strict';
+  let shippingData = null;
+  const method = document.getElementById('shipmethod');
+  const zone = document.getElementById('zone');
+  const parcelFields = document.getElementById('parcelFields');
+  const zoneLabel = document.querySelector('#zoneFields label');
+  const notice = document.createElement('p');
+  notice.className = 'muted';
+  notice.id = 'shippingSyncStatus';
+  notice.setAttribute('role', 'status');
+  method.insertAdjacentElement('afterend', notice);
+  if (zoneLabel) zoneLabel.textContent = 'พื้นที่จัดส่งที่เปิดให้บริการ';
+  // Do not show old hardcoded shipping choices while fetching settings.
+  method.replaceChildren(new Option('กำลังโหลดวิธีรับสินค้า...', ''));
+  method.disabled = true;
+  zone.replaceChildren(new Option('กำลังโหลดพื้นที่จัดส่ง...', ''));
+  zone.disabled = true;
+  notice.textContent = 'กำลังโหลดค่าจัดส่งจาก Supabase...';
+
+  // The existing renderCart() uses ship() to calculate the total.
+  // Override that calculator so no old demo rates can be charged/displayed.
+  window.ship = function () {
+    if (!shippingData) return null;
+    const m = method.value;
+    if (m === 'pickup' && shippingData.pickupEnabled) return 0;
+    if (m === 'parcel' && shippingData.parcelEnabled) return shippingData.parcelFee;
+    if (m === 'local' && shippingData.localDeliveryEnabled) {
+      const area = shippingData.areas.find(a => String(a.id) === zone.value);
+      return area ? area.fee : null;
+    }
+    return null;
+  };
+
+  const originalShippingFields = window.shippingFields;
+  window.shippingFields = function () {
+    originalShippingFields();
+    // Parcel delivery has one Supabase-managed flat fee, not demo 50/80 options.
+    parcelFields.classList.add('hide');
+  };
+
+  function addChoice(select, label, value) {
+    select.add(new Option(label, value));
+  }
+  function validFee(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  }
+
+  async function initializeShipping() {
+    try {
+      if (!window.JPlusShipping || typeof window.JPlusShipping.load !== 'function') {
+        throw new Error('ไม่พบไฟล์เชื่อมต่อค่าจัดส่ง');
+      }
+      const data = await window.JPlusShipping.load();
+      if (!data || !Array.isArray(data.areas) || !validFee(data.parcelFee)) {
+        throw new Error('ข้อมูลค่าจัดส่งไม่ถูกต้อง');
+      }
+      if (data.areas.some(a => !Number.isSafeInteger(Number(a.id)) || !validFee(a.fee))) {
+        throw new Error('ข้อมูลพื้นที่จัดส่งไม่ถูกต้อง');
+      }
+      shippingData = data;
+      method.replaceChildren();
+      zone.replaceChildren();
+      if (data.localDeliveryEnabled && data.areas.length) {
+        addChoice(method, 'จัดส่งภายในพื้นที่ที่ร้านกำหนด', 'local');
+        data.areas.forEach(a => addChoice(zone, `${a.name} — ${a.fee.toLocaleString('th-TH')} บาท`, String(a.id)));
+      }
+      if (data.parcelEnabled) addChoice(method, `ส่งพัสดุ — ${data.parcelFee.toLocaleString('th-TH')} บาท`, 'parcel');
+      if (data.pickupEnabled) addChoice(method, 'รับที่ร้าน (ฟรี)', 'pickup');
+      if (!method.options.length) {
+        method.add(new Option('ยังไม่มีวิธีรับสินค้าที่เปิดให้บริการ', ''));
+        method.disabled = true;
+        notice.textContent = 'ขณะนี้ร้านยังไม่เปิดวิธีรับสินค้า';
+      } else {
+        method.disabled = false;
+        notice.textContent = '✓ โหลดค่าจัดส่งจาก Supabase สำเร็จ';
+      }
+      zone.disabled = !data.localDeliveryEnabled || !data.areas.length;
+      window.shippingFields();
+    } catch (error) {
+      console.error('J Plus Shop shipping sync:', error);
+      shippingData = null;
+      method.replaceChildren(new Option('ไม่สามารถโหลดวิธีรับสินค้าได้', ''));
+      zone.replaceChildren(new Option('ไม่สามารถโหลดพื้นที่จัดส่งได้', ''));
+      method.disabled = true;
+      zone.disabled = true;
+      notice.textContent = '⚠ โหลดค่าจัดส่งไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ';
+      window.shippingFields();
+    }
+  }
+  initializeShipping();
+})();
+</script>
+</body></html>
