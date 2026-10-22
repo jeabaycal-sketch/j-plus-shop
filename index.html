@@ -2,7 +2,8 @@
 <script src="supabase-config.js"></script>
   
 <script src="supabase-products.js"></script>
-<script>
+<script src="supabase-shipping.js"></script>
+  <script>const config = window.JPLUS_SUPABASE_CONFIG;
 // V3 read-only Supabase product synchronization. Orders and POS stay disabled
 // until authenticated, atomic inventory updates are implemented server-side.
 (async function initializeSupabaseProducts(){
