@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>J Plus Shop V3 | คำสั่งซื้อ</title>
+<style>
+:root{font-family:system-ui,'Noto Sans Thai',sans-serif;color:#17324a;background:#f4f8fb}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(100deg,#075d83,#13a4aa);color:white;padding:22px 16px}header .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px}h1{font-size:24px;margin:0}header p{margin:4px 0 0}.wrap{max-width:1080px;margin:auto}main{padding:22px 14px}.panel{background:white;border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 2px 12px #17324a12}h2{margin:0 0 14px;font-size:19px}label{display:block;font-weight:600;margin:12px 0 5px}input,select,button{font:inherit;border-radius:9px;padding:11px}input,select{width:100%;border:1px solid #ccd7e1;background:white}button{background:#087fa5;color:white;border:0;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.secondary{background:#e8f2f7;color:#17324a}.hidden{display:none!important}.muted{color:#607387;font-size:14px}.notice{padding:12px;border-radius:9px;background:#edf7ff;margin:12px 0;white-space:pre-wrap}.notice.error{background:#fff0f0;color:#a12626}.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tools select{width:auto;min-width:160px}.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:850px}th,td{text-align:left;padding:12px;border-bottom:1px solid #e4ebf0;vertical-align:top}th{background:#f2f8fb}td small{display:block;color:#627489}.rowactions{display:flex;gap:8px;align-items:center}.rowactions select{min-width:145px}.rowactions button{white-space:nowrap}.count{font-weight:700}
+</style>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+<header><div class="wrap"><div><h1>J Plus Shop V3</h1><p>จัดการคำสั่งซื้อ · หน้าทดลองสำหรับผู้ดูแล</p></div><button id="logout" class="secondary hidden">ออกจากระบบ</button></div></header>
+<main class="wrap">
+<section id="loginPanel" class="panel"><h2>เข้าสู่ระบบผู้ดูแล</h2><p class="muted">ใช้บัญชีผู้ดูแลที่ลงทะเบียนใน Supabase</p><form id="loginForm"><label for="email">อีเมล</label><input id="email" type="email" autocomplete="username" required><label for="password">รหัสผ่าน</label><input id="password" type="password" autocomplete="current-password" required><p><button id="loginBtn" type="submit">เข้าสู่ระบบ</button></p></form></section>
+<section id="ordersPanel" class="panel hidden"><h2>รายการคำสั่งซื้อ</h2><div class="tools"><button id="reload">รีเฟรชรายการ</button><label for="filter">สถานะ</label><select id="filter"><option value="">ทั้งหมด</option><option value="pending">รอดำเนินการ</option><option value="confirmed">ยืนยันแล้ว</option><option value="preparing">กำลังเตรียม</option><option value="shipped">จัดส่งแล้ว</option><option value="completed">สำเร็จ</option><option value="cancelled">ยกเลิก</option></select><span id="count" class="count"></span></div><p class="muted">แสดงสูงสุด 100 รายการล่าสุด · การเปลี่ยนสถานะจะบันทึกลง Supabase</p><div class="tablewrap"><table><thead><tr><th>เลขงาน / วันเวลา</th><th>ลูกค้า</th><th>การรับสินค้า</th><th>ยอดรวม</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="orderRows"></tbody></table></div></section>
+<div id="message" class="notice" role="status">กรุณาเข้าสู่ระบบเพื่อดูคำสั่งซื้อ</div>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const cfg=window.JPLUS_SUPABASE_CONFIG;
+const statuses={pending:'รอดำเนินการ',confirmed:'ยืนยันแล้ว',preparing:'กำลังเตรียม',shipped:'จัดส่งแล้ว',completed:'สำเร็จ',cancelled:'ยกเลิก'};
+let accessToken='',userId='',orders=[];
+function message(s,error=false){$('message').textContent=s;$('message').className='notice'+(error?' error':'')}
+function money(n){return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+' บาท'}
+function dateText(s){if(!s)return '-';const d=new Date(s);return isNaN(d)?'-':d.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}
+function showDashboard(ok){$('loginPanel').classList.toggle('hidden',ok);$('ordersPanel').classList.toggle('hidden',!ok);$('logout').classList.toggle('hidden',!ok)}
+async function api(path,method='GET',body=null,token=''){
+ if(!cfg?.url||!cfg?.publishableKey)throw Error('ไม่พบการตั้งค่า Supabase');
+ const headers={apikey:cfg.publishableKey,Authorization:'Bearer '+(token||cfg.publishableKey)};
+ if(body!==null)headers['Content-Type']='application/json';
+ const res=await fetch(cfg.url.replace(/\/$/,'')+path,{method,headers,body:body===null?undefined:JSON.stringify(body),cache:'no-store'});
+ const raw=await res.text();let data;try{data=raw?JSON.parse(raw):null}catch{data={message:raw}}
+ if(!res.ok)throw Error((data?.message||data?.msg||data?.error_description||data?.error||'เกิดข้อผิดพลาด')+' (HTTP '+res.status+')');
+ return data;
+}
+async function verifyAdmin(token,uid){
+ const rows=await api('/rest/v1/shop_admins?select=user_id&user_id=eq.'+encodeURIComponent(uid)+'&limit=1','GET',null,token);
+ if(!Array.isArray(rows)||rows.length!==1)throw Error('บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลร้าน');
+}
+$('loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();$('loginBtn').disabled=true;message('กำลังตรวจสอบบัญชี...');
+ try{
+  const result=await api('/auth/v1/token?grant_type=password','POST',{email:$('email').value.trim(),password:$('password').value});
+  if(!result?.access_token||!result?.user?.id)throw Error('ไม่พบข้อมูลการเข้าสู่ระบบ');
+  await verifyAdmin(result.access_token,result.user.id);
+  accessToken=result.access_token;userId=result.user.id;$('password').value='';showDashboard(true);await loadOrders();
+ }catch(err){accessToken='';userId='';showDashboard(false);message('เข้าสู่ระบบไม่สำเร็จ: '+err.message,true)}
+ finally{$('loginBtn').disabled=false}
+});
+async function loadOrders(){
+ if(!accessToken)return;
+ message('กำลังโหลดคำสั่งซื้อ...');$('reload').disabled=true;
+ try{
+  await verifyAdmin(accessToken,userId);
+  const data=await api('/rest/v1/shop_orders?select=id,job_no,created_at,customer_name,customer_phone,delivery_method,delivery_address,delivery_area,shipping_carrier,tracking_number,total_amount,status&order=created_at.desc&limit=100','GET',null,accessToken);
+  if(!Array.isArray(data))throw Error('รูปแบบข้อมูลไม่ถูกต้อง');
+  orders=data;render();message('โหลดคำสั่งซื้อสำเร็จ');
+ }catch(err){orders=[];render();message('โหลดรายการไม่สำเร็จ: '+err.message,true)}
+ finally{$('reload').disabled=false}
+}
+function cell(tr,value){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);return td}
+function render(){
+ const tbody=$('orderRows');tbody.replaceChildren();const selected=$('filter').value;
+ const visible=orders.filter(o=>!selected||o.status===selected);$('count').textContent=visible.length+' รายการ';
+ if(!visible.length){const tr=document.createElement('tr');const td=cell(tr,'ยังไม่มีคำสั่งซื้อในรายการนี้');td.colSpan=6;tbody.appendChild(tr);return}
+ for(const o of visible){
+  const tr=document.createElement('tr');
+  const a=cell(tr,o.job_no||'#'+o.id);const small=document.createElement('small');small.textContent=dateText(o.created_at);a.appendChild(small);
+  const b=cell(tr,o.customer_name||'-');const phone=document.createElement('small');phone.textContent=o.customer_phone||'-';b.appendChild(phone);
+  const c=cell(tr,o.delivery_method||'-');const detail=document.createElement('small');detail.textContent=[o.delivery_area,o.delivery_address,o.shipping_carrier,o.tracking_number].filter(Boolean).join(' · ');c.appendChild(detail);
+  cell(tr,money(o.total_amount));cell(tr,statuses[o.status]||o.status||'-');
+  const td=document.createElement('td'),div=document.createElement('div'),sel=document.createElement('select'),btn=document.createElement('button');div.className='rowactions';
+  for(const [key,label] of Object.entries(statuses)){const opt=document.createElement('option');opt.value=key;opt.textContent=label;sel.appendChild(opt)}
+  if(!(o.status in statuses)){const opt=document.createElement('option');opt.value=o.status||'';opt.textContent=o.status||'ไม่ทราบสถานะ';sel.appendChild(opt)}
+  sel.value=o.status||'';btn.textContent='บันทึก';btn.disabled=sel.value===o.status;
+  sel.addEventListener('change',()=>btn.disabled=sel.value===o.status);
+  btn.addEventListener('click',async()=>{
+   if(!confirm('ยืนยันเปลี่ยนสถานะเลขงาน '+(o.job_no||o.id)+' เป็น '+(statuses[sel.value]||sel.value)+' ?'))return;
+   btn.disabled=true;sel.disabled=true;
+   try{
+    const updated=await api('/rest/v1/shop_orders?id=eq.'+encodeURIComponent(o.id)+'&select=id,status','PATCH',{status:sel.value},accessToken);
+    // Request representation explicitly to detect missing permission or missing row.
+    // Supabase may return null for minimal response; verify with a fresh read.
+    const check=await api('/rest/v1/shop_orders?select=id,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1','GET',null,accessToken);
+    if(!Array.isArray(check)||check.length!==1||check[0].status!==sel.value)throw Error('ไม่สามารถยืนยันการบันทึกสถานะได้');
+    o.status=sel.value;render();message('บันทึกสถานะเลขงาน '+(o.job_no||o.id)+' สำเร็จ');
+   }catch(err){message('บันทึกไม่สำเร็จ: '+err.message,true);sel.disabled=false;btn.disabled=false}
+  });
+  div.append(sel,btn);td.appendChild(div);tr.appendChild(td);tbody.appendChild(tr);
+ }
+}
+$('filter').addEventListener('change',render);
+$('reload').addEventListener('click',loadOrders);
+$('logout').addEventListener('click',()=>{accessToken='';userId='';orders=[];$('email').value='';$('password').value='';showDashboard(false);message('ออกจากระบบแล้ว');});
+if(!cfg?.url||!cfg?.publishableKey)message('ไม่พบ supabase-config.js กรุณาตรวจสอบไฟล์ตั้งค่า',true);
+</script>
+</body>
+</html>
