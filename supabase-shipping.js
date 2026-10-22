@@ -3,8 +3,7 @@
 
 window.JPlusShipping = {
   async load() {
-    const config = window.SUPABASE_CONFIG;
-
+    const config = window.JPLUS_SUPABASE_CONFIG;
     if (!config) {
       throw new Error("ไม่พบการตั้งค่า Supabase");
     }
