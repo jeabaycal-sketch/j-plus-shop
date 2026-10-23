@@ -1,0 +1,510 @@
+
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>J Plus Shop V3 | Admin รวมระบบ</title>
+<script src="supabase-config.js"></script>
+<style>
+:root{font-family:system-ui,"Noto Sans Thai",sans-serif;color:#163348;background:#f3f8fb}
+*{box-sizing:border-box}
+body{margin:0}
+header{background:linear-gradient(120deg,#14638a,#3398ac);color:white;padding:22px 16px}
+header .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{font-size:25px;margin:0}
+h2{font-size:20px;margin:0 0 15px}
+.wrap{max-width:1100px;margin:auto}
+.main{padding:22px 14px}
+section{background:white;border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 3px 18px #1234 0}
+label{display:block;font-weight:600;margin:12px 0 6px}
+input{width:100%;border:1px solid #cbd8df;border-radius:9px;padding:12px;font-size:16px}
+button{border:0;border-radius:9px;padding:11px 16px;background:#14769b;color:white;font-weight:700;cursor:pointer;font-size:15px}
+button.secondary{background:#edf5f8;color:#165674}
+button.danger{background:#b33e48}
+button.good{background:#168365}
+button:disabled{opacity:.55;cursor:wait}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid .full{grid-column:1/-1}
+.notice{padding:12px;border-radius:10px;background:#eaf5fb;margin:12px 0;white-space:pre-wrap}
+.error{background:#fff0f0;color:#8c1d2a}
+.hidden{display:none!important}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th,td{padding:11px;text-align:left;border-bottom:1px solid #e3ebef}
+th{background:#eaf3f7}
+td button{margin:2px}
+.muted{color:#647b8b;font-size:14px}
+.badge{display:inline-block;padding:5px 10px;border-radius:20px;font-size:13px;font-weight:700}
+.badge.on{background:#dcf5e7;color:#12623a}
+.badge.off{background:#fbe7e9;color:#9c2939}
+.badge.empty{background:#fff0d4;color:#885900}
+.stock-actions{white-space:nowrap}
+.stock-actions button{padding:8px 12px;background:#e4f1fa;color:#12608a}
+#login{max-width:510px;margin:20px auto}
+@media(max-width:580px){
+.grid{grid-template-columns:1fr}
+.grid .full{grid-column:auto}
+h1{font-size:21px}
+}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<div>
+<h1>J Plus Shop V3</h1>
+<div>Admin รวมระบบสินค้าและสต๊อก — หน้าทดสอบ</div>
+</div>
+<button id="logout" class="secondary hidden" type="button">ออกจากระบบ</button>
+</div>
+</header>
+
+<main class="wrap main">
+<section id="login">
+<h2>เข้าสู่ระบบ Admin</h2>
+<p class="muted">ใช้อีเมลและรหัสผ่านผู้ดูแลร้านที่ลงทะเบียนไว้ใน Supabase</p>
+<form id="loginForm">
+<label for="email">อีเมล</label>
+<input id="email" type="email" autocomplete="username" required>
+<label for="password">รหัสผ่าน</label>
+<input id="password" type="password" autocomplete="current-password" required>
+<div class="actions">
+<button id="loginBtn">เข้าสู่ระบบ</button>
+<a href="index.html">กลับหน้าร้านค้า</a>
+</div>
+</form>
+<div id="loginMsg" role="status"></div>
+</section>
+
+<div id="dashboard" class="hidden">
+<section>
+<h2>ภาพรวมสินค้า</h2>
+<div id="summary" class="notice">กำลังโหลดสินค้า...</div>
+<div class="actions">
+<button id="reload" class="secondary">รีเฟรชสินค้า</button>
+<a href="index.html">ดูหน้าร้านค้า</a>
+<a href="admin-shipping.html">ตั้งค่าจัดส่ง</a>
+</div>
+</section>
+
+<section>
+<h2 id="formTitle">เพิ่มสินค้า</h2>
+<form id="productForm">
+<div class="grid">
+<div class="full">
+<label for="name">ชื่อสินค้า</label>
+<input id="name" maxlength="200" required>
+</div>
+<div>
+<label for="sku">รหัส SKU</label>
+<input id="sku" maxlength="100" required>
+</div>
+<div>
+<label for="price">ราคาขาย (บาท)</label>
+<input id="price" type="number" min="0" step="0.01" required>
+</div>
+<div>
+<label for="cost">ต้นทุน (บาท)</label>
+<input id="cost" type="number" min="0" step="0.01" required>
+</div>
+<div>
+<label for="stock">จำนวนสต๊อก</label>
+<input id="stock" type="number" min="0" step="1" required>
+</div>
+</div>
+<div class="actions">
+<button id="saveBtn">บันทึกสินค้า</button>
+<button id="cancelEdit" type="button" class="secondary">ล้างฟอร์ม</button>
+</div>
+</form>
+<div id="formMsg" role="status"></div>
+</section>
+
+<section>
+<h2>รายการสินค้า</h2>
+<p class="muted">สต๊อก 0 จะไม่แสดงหน้าร้านอัตโนมัติ แม้เปิดวางขายอยู่ ส่วนการซ่อนสินค้าไม่ลบข้อมูลเดิม</p>
+<div class="scroll">
+<table>
+<thead>
+<tr>
+<th>ชื่อสินค้า</th>
+<th>SKU</th>
+<th>ราคาขาย</th>
+<th>ต้นทุน</th>
+<th>สต๊อก</th>
+<th>ปรับสต๊อก</th>
+<th>สถานะ</th>
+<th>จัดการ</th>
+</tr>
+</thead>
+<tbody id="productsBody">
+<tr><td colspan="8">กำลังโหลด...</td></tr>
+</tbody>
+</table>
+</div>
+<p class="muted">การกด + / − จะเปลี่ยนสต๊อกจริงใน Supabase หลังยืนยัน</p>
+<div id="tableMsg" role="status"></div>
+</section>
+</div>
+</main>
+
+<script>
+"use strict";
+
+const cfg=window.JPLUS_SUPABASE_CONFIG;
+const $=id=>document.getElementById(id);
+let token="",products=[],editingId=null,busy=false;
+
+const money=n=>Number(n||0).toLocaleString("th-TH",{
+ minimumFractionDigits:2,
+ maximumFractionDigits:2
+});
+
+function msg(id,text,error=false){
+ const el=$(id);
+ el.textContent=text;
+ el.className=text?"notice"+(error?" error":""):"";
+}
+
+function showDashboard(ok){
+ $("login").classList.toggle("hidden",ok);
+ $("dashboard").classList.toggle("hidden",!ok);
+ $("logout").classList.toggle("hidden",!ok);
+}
+
+async function request(path,{method="GET",body,accessToken=token}={}){
+ if(!cfg?.url||!cfg?.publishableKey)
+  throw Error("ไม่พบการตั้งค่า Supabase");
+
+ const res=await fetch(cfg.url.replace(/\/$/,"")+path,{
+  method,
+  headers:{
+   apikey:cfg.publishableKey,
+   Authorization:"Bearer "+(accessToken||cfg.publishableKey),
+   "Content-Type":"application/json",
+   ...(method==="POST"||method==="PATCH"
+     ?{Prefer:"return=representation"}:{})
+  },
+  ...(body!==undefined?{body:JSON.stringify(body)}:{})
+ });
+
+ const raw=await res.text();
+ let data;
+ try{data=raw?JSON.parse(raw):null}catch{data=raw}
+
+ if(!res.ok)
+  throw Error(
+   (data?.message||data?.msg||data?.error_description||
+    data?.error||"คำขอไม่สำเร็จ")+" (HTTP "+res.status+")"
+  );
+ return data;
+}
+
+async function verifyAdmin(accessToken,userId){
+ const rows=await request(
+  "/rest/v1/shop_admins?select=user_id&user_id=eq."+
+  encodeURIComponent(userId)+"&limit=1",
+  {accessToken}
+ );
+ if(!Array.isArray(rows)||rows.length!==1)
+  throw Error("บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลร้าน");
+}
+
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ $("loginBtn").disabled=true;
+ msg("loginMsg","กำลังตรวจสอบสิทธิ์...");
+ try{
+  const data=await request("/auth/v1/token?grant_type=password",{
+   method:"POST",
+   accessToken:cfg.publishableKey,
+   body:{
+    email:$("email").value.trim(),
+    password:$("password").value
+   }
+  });
+
+  if(!data?.access_token||!data?.user?.id)
+   throw Error("เข้าสู่ระบบไม่สำเร็จ");
+
+  await verifyAdmin(data.access_token,data.user.id);
+  token=data.access_token;
+  $("password").value="";
+  showDashboard(true);
+  msg("loginMsg","");
+  await loadProducts();
+ }catch(err){
+  token="";
+  showDashboard(false);
+  msg("loginMsg",err.message,true);
+ }finally{
+  $("loginBtn").disabled=false;
+ }
+});
+
+$("logout").onclick=()=>{
+ token="";
+ products=[];
+ editingId=null;
+ showDashboard(false);
+ $("password").value="";
+ msg("loginMsg","ออกจากระบบแล้ว");
+};
+
+async function loadProducts(){
+ msg("tableMsg","");
+ try{
+  const rows=await request(
+   "/rest/v1/products?select=id,name,sku,price,cost,stock,is_active&order=id.asc"
+  );
+  if(!Array.isArray(rows))
+   throw Error("ข้อมูลสินค้าไม่ถูกต้อง");
+  products=rows;
+  render();
+ }catch(err){
+  msg("tableMsg",err.message,true);
+  $("productsBody").replaceChildren();
+ }
+}
+
+function cell(tr,value){
+ const td=tr.insertCell();
+ td.textContent=value??"";
+ return td;
+}
+
+function makeButton(text,cls,action){
+ const b=document.createElement("button");
+ b.type="button";
+ b.textContent=text;
+ b.className=cls;
+ b.onclick=action;
+ return b;
+}
+
+function render(){
+ const total=products.reduce(
+  (sum,p)=>sum+Number(p.stock||0),0
+ );
+ const visible=products.filter(
+  p=>p.is_active===true&&Number(p.stock)>0
+ ).length;
+
+ $("summary").textContent=
+  `สินค้าทั้งหมด ${products.length} รายการ | `+
+  `สต๊อกรวม ${total.toLocaleString("th-TH")} ชิ้น | `+
+  `พร้อมวางขาย ${visible} รายการ | `+
+  `ซ่อน/หมดสต๊อก ${products.length-visible} รายการ`;
+
+ const body=$("productsBody");
+ body.replaceChildren();
+
+ if(!products.length){
+  const tr=body.insertRow();
+  const td=tr.insertCell();
+  td.colSpan=8;
+  td.textContent="ยังไม่มีสินค้า";
+  return;
+ }
+
+ for(const p of products){
+  const tr=body.insertRow();
+
+  for(const value of [
+   p.name,p.sku,money(p.price),money(p.cost),p.stock
+  ])cell(tr,value);
+
+  const stockCell=tr.insertCell();
+  stockCell.className="stock-actions";
+  stockCell.append(
+   makeButton("−","secondary",()=>changeStock(p.id,-1)),
+   makeButton("+","secondary",()=>changeStock(p.id,1))
+  );
+
+  const statusCell=tr.insertCell();
+  const badge=document.createElement("span");
+  badge.className="badge ";
+
+  if(!p.is_active){
+   badge.className+="off";
+   badge.textContent="ซ่อนโดยร้าน";
+  }else if(Number(p.stock)<=0){
+   badge.className+="empty";
+   badge.textContent="หมดสต๊อก";
+  }else{
+   badge.className+="on";
+   badge.textContent="วางขาย";
+  }
+  statusCell.append(badge);
+
+  const action=tr.insertCell();
+  action.append(
+   makeButton("แก้ไข","secondary",()=>editProduct(p.id)),
+   makeButton(
+    p.is_active?"ซ่อนสินค้า":"เปิดวางขาย",
+    p.is_active?"danger":"good",
+    ()=>toggleProduct(p.id)
+   )
+  );
+ }
+}
+
+function resetForm(){
+ editingId=null;
+ $("productForm").reset();
+ $("formTitle").textContent="เพิ่มสินค้า";
+ $("saveBtn").textContent="บันทึกสินค้า";
+ msg("formMsg","");
+}
+
+$("cancelEdit").onclick=resetForm;
+
+function editProduct(id){
+ const p=products.find(x=>String(x.id)===String(id));
+ if(!p)return;
+ editingId=p.id;
+ for(const key of ["name","sku","price","cost","stock"])
+  $(key).value=p[key]??"";
+
+ $("formTitle").textContent="แก้ไขสินค้า";
+ $("saveBtn").textContent="บันทึกการแก้ไข";
+
+ window.scrollTo({
+  top:$("productForm").getBoundingClientRect().top+
+      window.scrollY-100,
+  behavior:"smooth"
+ });
+}
+
+$("productForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+
+ const payload={
+  name:$("name").value.trim(),
+  sku:$("sku").value.trim(),
+  price:Number($("price").value),
+  cost:Number($("cost").value),
+  stock:Number($("stock").value)
+ };
+
+ if(!payload.name||!payload.sku||
+    !Number.isInteger(payload.stock)||
+    Object.values(payload).some(
+     v=>typeof v==="number"&&(!Number.isFinite(v)||v<0)
+    )){
+  msg("formMsg","กรุณากรอกข้อมูลให้ถูกต้อง",true);
+  return;
+ }
+
+ const isEdit=editingId!==null;
+ $("saveBtn").disabled=true;
+
+ try{
+  const result=await request(
+   isEdit
+    ?"/rest/v1/products?id=eq."+encodeURIComponent(editingId)
+    :"/rest/v1/products",
+   {
+    method:isEdit?"PATCH":"POST",
+    body:isEdit?payload:[payload]
+   }
+  );
+
+  if(!Array.isArray(result)||result.length!==1)
+   throw Error("ไม่สามารถยืนยันการบันทึกได้");
+
+  resetForm();
+  msg("formMsg","บันทึกข้อมูลสำเร็จ");
+  await loadProducts();
+ }catch(err){
+  msg("formMsg",err.message,true);
+ }finally{
+  $("saveBtn").disabled=false;
+ }
+});
+
+async function toggleProduct(id){
+ if(busy)return;
+
+ const p=products.find(x=>String(x.id)===String(id));
+ if(!p)return;
+
+ const next=!p.is_active;
+ const action=next?"เปิดวางขาย":"ซ่อนสินค้า";
+
+ if(!confirm(`ยืนยัน${action} "${p.name}" หรือไม่?`))
+  return;
+
+ busy=true;
+ try{
+  const rows=await request(
+   "/rest/v1/products?id=eq."+encodeURIComponent(id),
+   {method:"PATCH",body:{is_active:next}}
+  );
+
+  if(!Array.isArray(rows)||rows.length!==1)
+   throw Error("ไม่สามารถยืนยันการบันทึกได้");
+
+  await loadProducts();
+  msg("tableMsg","เปลี่ยนสถานะสินค้าเรียบร้อยแล้ว");
+ }catch(err){
+  msg("tableMsg",err.message,true);
+ }finally{
+  busy=false;
+ }
+}
+
+async function changeStock(id,delta){
+ if(busy)return;
+
+ const p=products.find(x=>String(x.id)===String(id));
+ if(!p)return;
+
+ const old=Number(p.stock);
+ const next=old+delta;
+
+ if(!Number.isSafeInteger(old)||next<0){
+  msg("tableMsg","สต๊อกต้องไม่ต่ำกว่า 0",true);
+  return;
+ }
+
+ if(!confirm(
+  `ยืนยัน${delta>0?"เพิ่ม":"ลด"}สต๊อก "${p.name}" `+
+  `จาก ${old} เป็น ${next} ชิ้น?`
+ ))return;
+
+ busy=true;
+ try{
+  const path=
+   "/rest/v1/products?id=eq."+encodeURIComponent(id)+
+   "&stock=eq."+encodeURIComponent(old);
+
+  const rows=await request(path,{
+   method:"PATCH",
+   body:{stock:next}
+  });
+
+  if(!Array.isArray(rows)||rows.length!==1)
+   throw Error(
+    "สต๊อกอาจเปลี่ยนแปลงแล้ว กรุณารีเฟรชก่อน"
+   );
+
+  await loadProducts();
+  msg("tableMsg",`ปรับสต๊อก "${p.name}" เป็น ${next} ชิ้นแล้ว`);
+ }catch(err){
+  msg("tableMsg",err.message,true);
+  await loadProducts();
+ }finally{
+  busy=false;
+ }
+}
+
+$("reload").onclick=loadProducts;
+
+if(!cfg?.url||!cfg?.publishableKey)
+ msg("loginMsg","ไม่พบการตั้งค่า Supabase",true);
+</script>
+</body>
+</html>
