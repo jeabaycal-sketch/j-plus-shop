@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>J Plus Shop V3 | จัดการสถานะสินค้า</title>
+<script src="supabase-config.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f2f7fb;color:#17384d;font-family:system-ui,"Noto Sans Thai",sans-serif}
+header{background:linear-gradient(120deg,#145e85,#319cb0);color:white;padding:22px 16px;text-align:center}
+h1{margin:0;font-size:25px}
+main{max-width:1050px;margin:22px auto;padding:0 14px}
+section{background:white;border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 3px 15px #17384d12}
+h2{margin-top:0;font-size:20px}
+input,button,select{font:inherit;border-radius:9px;padding:11px}
+input{width:100%;border:1px solid #ccdce5;margin:6px 0 12px}
+button{border:0;background:#14789c;color:white;font-weight:700;cursor:pointer}
+button:disabled{opacity:.55;cursor:wait}
+button.off{background:#b74755}
+button.on{background:#168365}
+button.secondary{background:#e9f2f7;color:#175574}
+button:disabled{cursor:wait}
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.hidden{display:none!important}
+.notice{background:#eaf5fb;padding:12px;border-radius:9px;margin:12px 0;white-space:pre-wrap}
+.error{background:#fff0f0;color:#a22c3c}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:690px}
+th,td{padding:12px;border-bottom:1px solid #e5edf1;text-align:left}
+th{background:#eaf3f7}
+.badge{display:inline-block;border-radius:20px;padding:5px 11px;font-size:13px;font-weight:700}
+.active{background:#dff5e9;color:#17673f}
+.inactive{background:#fbe8eb;color:#9d3041}
+.empty{background:#fff0d6;color:#8a570e}
+.muted{color:#647b8b;font-size:14px}
+a{color:#166a92}
+</style>
+</head>
+<body>
+<header>
+<h1>J Plus Shop V3</h1>
+<div>ทดสอบระบบวางขาย / ซ่อนสินค้า</div>
+</header>
+<main>
+<section id="loginBox">
+<h2>เข้าสู่ระบบผู้ดูแลร้าน</h2>
+<form id="loginForm">
+<label>อีเมล</label>
+<input id="email" type="email" autocomplete="username" required>
+<label>รหัสผ่าน</label>
+<input id="password" type="password" autocomplete="current-password" required>
+<button id="loginBtn" type="submit">เข้าสู่ระบบ</button>
+</form>
+<div id="loginMsg"></div>
+</section>
+
+<div id="dashboard" class="hidden">
+<section>
+<h2>จัดการสถานะสินค้า</h2>
+<p class="muted">สินค้าสต๊อก 0 จะถูกซ่อนจากหน้าร้านอัตโนมัติเมื่อเชื่อมระบบหน้าร้านแล้ว</p>
+<div id="summary" class="notice">กำลังโหลด...</div>
+<div class="actions">
+<button id="reload" class="secondary">รีเฟรชสินค้า</button>
+<button id="logout" class="secondary">ออกจากระบบ</button>
+<a href="admin.html">กลับหน้าจัดการสินค้า</a>
+</div>
+</section>
+
+<section>
+<h2>รายการสินค้า</h2>
+<div class="scroll">
+<table>
+<thead>
+<tr>
+<th>สินค้า</th>
+<th>SKU</th>
+<th>สต๊อก</th>
+<th>สถานะหน้าร้านที่ต้องการ</th>
+<th>จัดการ</th>
+</tr>
+</thead>
+<tbody id="items"></tbody>
+</table>
+</div>
+<div id="statusMsg" role="status"></div>
+</section>
+</div>
+</main>
+
+<script>
+"use strict";
+const cfg=window.JPLUS_SUPABASE_CONFIG;
+const $=id=>document.getElementById(id);
+let token="";
+let products=[];
+
+function message(id,text,error=false){
+ const el=$(id);
+ el.textContent=text;
+ el.className=text?"notice"+(error?" error":""):"";
+}
+async function api(path,options={}){
+ if(!cfg?.url||!cfg?.publishableKey)
+   throw Error("ไม่พบการตั้งค่า Supabase");
+ const method=options.method||"GET";
+ const response=await fetch(cfg.url.replace(/\/$/,"")+path,{
+  method,
+  headers:{
+   apikey:cfg.publishableKey,
+   Authorization:"Bearer "+(options.accessToken||token||cfg.publishableKey),
+   "Content-Type":"application/json",
+   ...(method==="PATCH"?{Prefer:"return=representation"}:{})
+  },
+  ...(options.body!==undefined?{body:JSON.stringify(options.body)}:{})
+ });
+ const raw=await response.text();
+ let data;
+ try{data=raw?JSON.parse(raw):null}catch{data=raw}
+ if(!response.ok)
+   throw Error((data?.message||data?.error_description||data?.msg||"ดำเนินการไม่สำเร็จ")+" (HTTP "+response.status+")");
+ return data;
+}
+
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ $("loginBtn").disabled=true;
+ message("loginMsg","กำลังตรวจสอบสิทธิ์...");
+ try{
+  const auth=await api("/auth/v1/token?grant_type=password",{
+   method:"POST",
+   accessToken:cfg.publishableKey,
+   body:{email:$("email").value.trim(),password:$("password").value}
+  });
+  if(!auth?.access_token||!auth?.user?.id)
+   throw Error("เข้าสู่ระบบไม่สำเร็จ");
+  const admins=await api(
+   "/rest/v1/shop_admins?select=user_id&user_id=eq."+
+   encodeURIComponent(auth.user.id)+"&limit=1",
+   {accessToken:auth.access_token}
+  );
+  if(!Array.isArray(admins)||admins.length!==1)
+   throw Error("บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลร้าน");
+  token=auth.access_token;
+  $("password").value="";
+  $("loginBox").classList.add("hidden");
+  $("dashboard").classList.remove("hidden");
+  await loadProducts();
+ }catch(err){
+  token="";
+  message("loginMsg",err.message,true);
+ }finally{
+  $("loginBtn").disabled=false;
+ }
+});
+
+async function loadProducts(){
+ message("statusMsg","");
+ try{
+  const data=await api(
+   "/rest/v1/products?select=id,name,sku,stock,is_active&order=id.asc"
+  );
+  if(!Array.isArray(data))throw Error("รูปแบบข้อมูลสินค้าไม่ถูกต้อง");
+  products=data;
+  render();
+ }catch(err){
+  message("statusMsg",err.message,true);
+ }
+}
+
+function render(){
+ const total=products.length;
+ const active=products.filter(p=>p.is_active===true&&Number(p.stock)>0).length;
+ const hidden=total-active;
+ $("summary").textContent=
+  "สินค้าทั้งหมด "+total+" รายการ | พร้อมวางขาย "+
+  active+" รายการ | ซ่อน/หมดสต๊อก "+hidden+" รายการ";
+
+ const body=$("items");
+ body.replaceChildren();
+ if(!products.length){
+  const tr=body.insertRow();
+  const td=tr.insertCell();
+  td.colSpan=5;
+  td.textContent="ยังไม่มีสินค้า";
+  return;
+ }
+ for(const p of products){
+  const stock=Number(p.stock)||0;
+  const tr=body.insertRow();
+  for(const value of [p.name,p.sku,stock]){
+   const td=tr.insertCell();
+   td.textContent=value??"";
+  }
+  const state=tr.insertCell();
+  const badge=document.createElement("span");
+  badge.className="badge";
+  if(!p.is_active){
+   badge.classList.add("inactive");
+   badge.textContent="ซ่อนโดยเจ้าของร้าน";
+  }else if(stock<=0){
+   badge.classList.add("empty");
+   badge.textContent="สต๊อกหมด — ซ่อนอัตโนมัติ";
+  }else{
+   badge.classList.add("active");
+   badge.textContent="วางขาย";
+  }
+  state.append(badge);
+
+  const action=tr.insertCell();
+  const btn=document.createElement("button");
+  btn.className=p.is_active?"off":"on";
+  btn.textContent=p.is_active?"ซ่อนสินค้า":"เปิดวางขาย";
+  btn.onclick=()=>toggleProduct(p,btn);
+  action.append(btn);
+ }
+}
+
+async function toggleProduct(p,button){
+ const next=!p.is_active;
+ const text=next?"เปิดวางขาย":"ซ่อนสินค้า";
+ if(!confirm("ยืนยันการ"+text+" \""+p.name+"\" ?"))return;
+ button.disabled=true;
+ message("statusMsg","กำลังบันทึก...");
+ try{
+  const result=await api(
+   "/rest/v1/products?id=eq."+encodeURIComponent(p.id),
+   {method:"PATCH",body:{is_active:next}}
+  );
+  if(!Array.isArray(result)||result.length!==1)
+   throw Error("ไม่สามารถยืนยันการบันทึกได้ กรุณาตรวจสอบสิทธิ์ฐานข้อมูล");
+  await loadProducts();
+  message("statusMsg","บันทึกสถานะสินค้าเรียบร้อยแล้ว");
+ }catch(err){
+  message("statusMsg",err.message,true);
+  button.disabled=false;
+ }
+}
+
+$("reload").onclick=loadProducts;
+$("logout").onclick=()=>{
+ token="";
+ products=[];
+ $("dashboard").classList.add("hidden");
+ $("loginBox").classList.remove("hidden");
+ message("loginMsg","ออกจากระบบแล้ว");
+};
+if(!cfg?.url||!cfg?.publishableKey)
+ message("loginMsg","ไม่พบไฟล์ตั้งค่า Supabase",true);
+</script>
+</body>
+</html>
