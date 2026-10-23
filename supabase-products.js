@@ -8,7 +8,7 @@ window.JPLUS_PRODUCTS_API = {
     }
 
     const response = await fetch(
-      `${config.url}/rest/v1/products?select=id,name,price,cost,stock,sku&order=id.asc`,
+      `${config.url}/rest/v1/products?select=id,name,price,cost,stock,sku&is_active=eq.true&stock=gt.0&order=id.asc`,
       {
         headers: {
           apikey: config.publishableKey,
