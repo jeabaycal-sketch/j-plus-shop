@@ -1,0 +1,107 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ตรวจสอบสถานะคำสั่งซื้อ | J Plus Shop</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, "Noto Sans Thai", sans-serif;
+      background: #f1f6fc;
+      color: #123052;
+    }
+    header {
+      background: linear-gradient(110deg,#073b78,#0878c8);
+      color: white;
+      padding: 24px 16px;
+      text-align: center;
+    }
+    header h1 { margin: 0; font-size: 27px; }
+    header p { margin: 6px 0 0; }
+    main { max-width: 520px; margin: 35px auto; padding: 0 15px; }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 26px;
+      box-shadow: 0 8px 25px #0a407315;
+    }
+    h2 { margin-top: 0; text-align: center; }
+    label { display: block; font-weight: 600; margin: 17px 0 7px; }
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #cbd9e8;
+      border-radius: 12px;
+      font-size: 17px;
+    }
+    button {
+      width: 100%;
+      background: #086bb9;
+      color: white;
+      border: 0;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 22px;
+      font-size: 17px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    #result {
+      margin-top: 18px;
+      padding: 15px;
+      background: #edf5ff;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .note { color: #657a91; font-size: 13px; text-align: center; }
+    a { color: #086bb9; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🛍️ J Plus Shop</h1>
+    <p>ตรวจสอบสถานะคำสั่งซื้อ</p>
+  </header>
+  <main>
+    <div class="card">
+      <h2>📦 ติดตามคำสั่งซื้อ</h2>
+      <form id="trackingForm">
+        <label for="jobNo">เลขงาน</label>
+        <input id="jobNo" type="text"
+               placeholder="เช่น 6910002"
+               maxlength="30" required>
+
+        <label for="phone">เบอร์โทรศัพท์ที่ใช้สั่งซื้อ</label>
+        <input id="phone" type="tel"
+               placeholder="กรอกเบอร์โทรศัพท์"
+               maxlength="20" autocomplete="tel" required>
+
+        <button id="searchBtn" type="submit">
+          🔍 ตรวจสอบสถานะ
+        </button>
+      </form>
+      <div id="result" role="status" aria-live="polite" hidden></div>
+      <p class="note">
+        ใช้เลขงานและเบอร์โทรศัพท์เดียวกับตอนสั่งซื้อ
+      </p>
+      <p style="text-align:center">
+        <a href="index.html">← กลับหน้าร้านค้า</a>
+      </p>
+    </div>
+  </main>
+  <script>
+    const form = document.getElementById('trackingForm');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      result.hidden = false;
+      result.textContent =
+        'หน้าตรวจสอบสถานะพร้อมแล้ว แต่ยังไม่ได้เปิดการค้นหาจริง กรุณารอเชื่อมต่อระบบอย่างปลอดภัย';
+    });
+  </script>
+</body>
+</html>
