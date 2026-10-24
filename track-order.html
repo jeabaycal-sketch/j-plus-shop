@@ -92,16 +92,80 @@
       </p>
     </div>
   </main>
-  <script>
-    const form = document.getElementById('trackingForm');
-    const result = document.getElementById('result');
+ <script src="supabase-config.js"></script> 
+<script>
+const form = document.getElementById('trackingForm');
+const result = document.getElementById('result');
+const searchBtn = document.getElementById('searchBtn');
 
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      result.hidden = false;
+const statusNames = {
+  pending: 'รอตรวจสอบคำสั่งซื้อ',
+  confirmed: 'รับคำสั่งซื้อแล้ว',
+  preparing: 'กำลังเตรียมสินค้า',
+  shipping: 'กำลังจัดส่ง',
+  completed: 'จัดส่งสำเร็จ',
+  cancelled: 'ยกเลิกคำสั่งซื้อ'
+};
+
+form.addEventListener('submit', async function(event) {
+  event.preventDefault();
+
+  const jobNo = document.getElementById('jobNo').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+
+  result.hidden = false;
+  result.textContent = 'กำลังตรวจสอบข้อมูล...';
+  searchBtn.disabled = true;
+
+  try {
+    const config = window.JPLUS_SUPABASE_CONFIG;
+    if (!config) throw new Error('ไม่พบการตั้งค่า Supabase');
+
+    const url = config.url || config.supabaseUrl;
+    const key = config.anonKey || config.publishableKey || config.key;
+
+    if (!url || !key) throw new Error('ข้อมูลเชื่อมต่อไม่ครบ');
+
+    const response = await fetch(
+      url.replace(/\/$/, '') + '/rest/v1/rpc/track_shop_order',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': key
+        },
+        body: JSON.stringify({
+          p_job_no: jobNo,
+          p_customer_phone: phone
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('ไม่สามารถตรวจสอบสถานะได้');
+    }
+
+    const data = await response.json();
+    const order = Array.isArray(data) ? data[0] : data;
+
+    if (!order) {
       result.textContent =
-        'หน้าตรวจสอบสถานะพร้อมแล้ว แต่ยังไม่ได้เปิดการค้นหาจริง กรุณารอเชื่อมต่อระบบอย่างปลอดภัย';
-    });
-  </script>
+        'ไม่พบคำสั่งซื้อ กรุณาตรวจสอบเลขงานและเบอร์โทรศัพท์อีกครั้ง';
+      return;
+    }
+
+    const status = statusNames[order.status] || order.status;
+    result.textContent =
+      'เลขงาน: ' + order.job_no + '\nสถานะ: ' + status;
+    result.style.whiteSpace = 'pre-line';
+
+  } catch (error) {
+    result.textContent = 'เกิดข้อผิดพลาด: ' + error.message;
+  } finally {
+    searchBtn.disabled = false;
+  }
+});
+</script>
+
 </body>
 </html>
