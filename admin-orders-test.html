@@ -72,7 +72,7 @@ async function loadOrders(){
   $('summary').textContent=`แสดง ${orders.length} ออเดอร์ล่าสุด`;
   $('orders').innerHTML=orders.length?orders.map(o=>{
    const lines=items.filter(i=>i.order_id===o.id);
-   const options=Object.entries(statuses).filter(([k])=>(o.status!=='cancelled'||k===o.status).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v}</option>`).join('');
+   const options=Object.entries(statuses).filter(([k])=>(o.status!=='cancelled'||k===o.status)).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v}</option>`).join('');
    const details=lines.length?lines.map(i=>`<div>${escapeHtml(i.product_name)} × ${Number(i.quantity)} — ${baht(i.line_total)}</div>`).join(''):'<div>ไม่พบรายการสินค้า</div>';
    return `<article class="order"><div class="top"><div><strong>เลขงาน ${escapeHtml(o.job_no||o.id)}</strong> <span class="tag">${escapeHtml(statuses[o.status]||o.status||'-')}</span><div class="muted">${escapeHtml(dateTime(o.created_at))}</div></div><div class="money">${baht(o.total_amount)}</div></div><p><strong>ลูกค้า:</strong> ${escapeHtml(o.customer_name)} | ${escapeHtml(o.customer_phone)}<br><strong>วิธีรับ:</strong> ${escapeHtml(o.delivery_method)} | <strong>ที่อยู่:</strong> ${escapeHtml(o.delivery_address||'-')}</p><div class="items">${details}<div class="muted">ค่าส่ง ${baht(o.delivery_fee)} · ค่าสินค้า ${baht(o.subtotal)}</div></div><div class="status"><label for="s${o.id}">สถานะ:</label><select id="s${o.id}" ${o.status==='cancelled'?'disabled':''}>${options}</select><button data-save="${o.id}" ${o.status==='cancelled'?'disabled':''}>บันทึกสถานะ</button></div></article>`;
   }).join(''):'ยังไม่มีออเดอร์';
