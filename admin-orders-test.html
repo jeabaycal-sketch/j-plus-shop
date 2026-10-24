@@ -84,6 +84,11 @@ async function saveStatus(id,button){
  const order=orders.find(o=>o.id===id),next=$('s'+id)?.value;
  if(!order||!next||next==='cancelled'||order.status==='cancelled')return;
  if(next===order.status){notice('สถานะยังไม่เปลี่ยน',true);return}
+ if(next==='cancelled'){
+  if(!confirm('ยืนยันยกเลิกออเดอร์ '+(order.job_no||id)+' ใช่หรือไม่?\nระบบจะคืนสต๊อกสินค้าโดยอัตโนมัติ และไม่สามารถเปิดออเดอร์นี้กลับได้')){
+    return;
+  }
+}
  if(!confirm(`เปลี่ยนสถานะเลขงาน ${order.job_no||id}\nจาก ${statuses[order.status]||order.status}\nเป็น ${statuses[next]} ใช่ไหม?`))return;
  button.disabled=true;
  try{
