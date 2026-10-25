@@ -65,7 +65,7 @@ async function loadOrders(){
  $('refresh').disabled=true;notice('กำลังโหลดออเดอร์...');
  try{
   await ensureSession();
-  orders=await request('/rest/v1/shop_orders?select=id,job_no,created_at,customer_name,customer_phone,delivery_method,delivery_address,subtotal,delivery_fee,total_amount,status,shipping_carrier&order=created_at.desc&limit=100');
+  orders=await request('/rest/v1/shop_orders?select=id,job_no,created_at,customer_name,customer_phone,delivery_method,delivery_address,subtotal,delivery_fee,total_amount,status,payment_status,shipping_carrier&order=created_at.desc&limit=100');
   const ids=orders.map(o=>o.id);
   let items=[];
   if(ids.length)items=await request('/rest/v1/shop_order_items?select=order_id,product_name,quantity,unit_price,line_total&order_id=in.('+ids.join(',')+')');
