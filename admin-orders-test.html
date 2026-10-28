@@ -75,8 +75,13 @@ async function loadOrders(){
    const options=Object.entries(statuses).filter(([k])=>(o.status!=='cancelled'||k===o.status)).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v}</option>`).join('');
    const paymentLabels = {pending:'รอตรวจสอบการชำระเงิน',paid:'ชำระเงินแล้ว',failed:'ชำระเงินไม่สำเร็จ',refunded:'คืนเงินแล้ว'};
    const paymentText = paymentLabels[o.payment_status] || o.payment_status || 'ไม่ระบุสถานะ';
+   
+const paymentButton = o.payment_status === 'pending' && o.status !== 'cancelled'
+  ? `<button type="button" data-pay="${o.id}">ยืนยันรับชำระเงิน</button>`
+  : '';
+
    const details=lines.length?lines.map(i=>`<div>${escapeHtml(i.product_name)} × ${Number(i.quantity)} — ${baht(i.line_total)}</div>`).join(''):'<div>ไม่พบรายการสินค้า</div>';
-   return `<article class="order"><div class="top"><div><strong>เลขงาน ${escapeHtml(o.job_no||o.id)}</strong> <span class="tag">${escapeHtml(statuses[o.status]||o.status||'-')}</span><div class="muted">${escapeHtml(dateTime(o.created_at))}</div></div><div class="money">${baht(o.total_amount)}</div></div><p><strong>ลูกค้า:</strong> ${escapeHtml(o.customer_name)} | ${escapeHtml(o.customer_phone)}<br><strong>วิธีรับ:</strong> ${escapeHtml(o.delivery_method)} | <strong>ที่อยู่:</strong> ${escapeHtml(o.delivery_address||'-')}</p><div class="items">${details}<div class="muted">ค่าส่ง ${baht(o.delivery_fee)} · ค่าสินค้า ${baht(o.subtotal)}</div></div><div class="status"><label for="s${o.id}">สถานะ:</label><select id="s${o.id}" ${o.status==='cancelled'?'disabled':''}>${options}</select><button data-save="${o.id}" ${o.status==='cancelled'?'disabled':''}>บันทึกสถานะ</button></div><div class="muted">การชำระเงิน: ${escapeHtml(paymentText)}</div></article>`;
+   return `<article class="order"><div class="top"><div><strong>เลขงาน ${escapeHtml(o.job_no||o.id)}</strong> <span class="tag">${escapeHtml(statuses[o.status]||o.status||'-')}</span><div class="muted">${escapeHtml(dateTime(o.created_at))}</div></div><div class="money">${baht(o.total_amount)}</div></div><p><strong>ลูกค้า:</strong> ${escapeHtml(o.customer_name)} | ${escapeHtml(o.customer_phone)}<br><strong>วิธีรับ:</strong> ${escapeHtml(o.delivery_method)} | <strong>ที่อยู่:</strong> ${escapeHtml(o.delivery_address||'-')}</p><div class="items">${details}<div class="muted">ค่าส่ง ${baht(o.delivery_fee)} · ค่าสินค้า ${baht(o.subtotal)}</div></div><div class="status"><label for="s${o.id}">สถานะ:</label><select id="s${o.id}" ${o.status==='cancelled'?'disabled':''}>${options}</select><button data-save="${o.id}" ${o.status==='cancelled'?'disabled':''}>บันทึกสถานะ</button></div><div class="muted">การชำระเงิน: ${escapeHtml(paymentText)} ${paymentButton}</div></article>`;
   }).join(''):'ยังไม่มีออเดอร์';
   notice('โหลดข้อมูลเรียบร้อย',true);
  }catch(e){$('orders').textContent='โหลดข้อมูลไม่ได้';notice('เกิดข้อผิดพลาด: '+e.message+'\nหากขึ้น permission denied ให้ตรวจสิทธิ์ Data API / RLS ก่อน')}
@@ -100,9 +105,56 @@ async function saveStatus(id,button){
   await loadOrders();notice('บันทึกสถานะเรียบร้อยแล้ว',true);
  }catch(e){notice('บันทึกไม่สำเร็จ: '+e.message);button.disabled=false}
 }
-$('signIn').onclick=signIn;$('refresh').onclick=loadOrders;
+
+async function confirmPayment(id, button) {
+  const order = orders.find(o => o.id === id);
+  if (!order || order.payment_status !== 'pending' || order.status === 'cancelled') return;
+
+  if (!confirm(`ตรวจสอบเงินเข้าบัญชีจริงแล้ว และยืนยันรับชำระเงินสำหรับเลขงาน ${order.job_no || id} ใช่หรือไม่?`)) return;
+
+  button.disabled = true;
+  try {
+    await ensureSession();
+    await verifyAdmin();
+
+    const result = await request(
+      '/rest/v1/shop_orders?id=eq.' + encodeURIComponent(id) +
+      '&payment_status=eq.pending&status=neq.cancelled',
+      {
+        method: 'PATCH',
+        body: { payment_status: 'paid' },
+        prefer: 'return=representation'
+      }
+    );
+
+    if (!Array.isArray(result) || result.length !== 1) {
+      throw Error('ไม่พบออเดอร์ที่สามารถยืนยันรับเงินได้ หรือสถานะถูกเปลี่ยนไปแล้ว');
+    }
+
+    await loadOrders();
+    notice('ยืนยันรับชำระเงินเรียบร้อยแล้ว', true);
+  } catch (e) {
+    notice('ยืนยันรับเงินไม่สำเร็จ: ' + e.message);
+    button.disabled = false;
+  }
+}
+
+ $('signIn').onclick=signIn;$('refresh').onclick=loadOrders;
 $('signOut').onclick=()=>{session=null;localStorage.removeItem(STORAGE);$('app').style.display='none';$('login').style.display='block';notice('ออกจากระบบแล้ว',true)};
-$('orders').addEventListener('click',e=>{const b=e.target.closest('[data-save]');if(b)saveStatus(Number(b.dataset.save),b)});
+
+$('orders').addEventListener('click', e => {
+  const saveButton = e.target.closest('[data-save]');
+  if (saveButton) {
+    saveStatus(Number(saveButton.dataset.save), saveButton);
+    return;
+  }
+
+  const payButton = e.target.closest('[data-pay]');
+  if (payButton) {
+    confirmPayment(Number(payButton.dataset.pay), payButton);
+  }
+});
+
 (async()=>{if(!base||!key){notice('ไม่พบ Supabase URL หรือ public key ใน supabase-config.js');return}try{session=JSON.parse(localStorage.getItem(STORAGE)||'null');if(session)await start()}catch(e){session=null;localStorage.removeItem(STORAGE);notice('กรุณาเข้าสู่ระบบ Admin: '+e.message)}})();
 </script>
 </body>
