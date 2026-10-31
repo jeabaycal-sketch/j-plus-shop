@@ -56,6 +56,10 @@
       border-radius: 12px;
       text-align: center;
     }
+    .tracking-line { margin: 6px 0; line-height: 1.65; }
+    .payment-paid { color: #176535; font-weight: 700; }
+    .payment-pending { color: #8a5300; font-weight: 700; }
+    .payment-warning { color: #657a91; font-size: 13px; }
     .note { color: #657a91; font-size: 13px; text-align: center; }
     a { color: #086bb9; }
   </style>
@@ -97,6 +101,13 @@
 const form = document.getElementById('trackingForm');
 const result = document.getElementById('result');
 const searchBtn = document.getElementById('searchBtn');
+
+const paymentNames = {
+  pending: 'รอตรวจสอบการชำระเงิน',
+  paid: 'ชำระเงินแล้ว',
+  failed: 'ชำระเงินไม่สำเร็จ',
+  refunded: 'คืนเงินแล้ว'
+};
 
 const statusNames = {
   pending: 'รอตรวจสอบคำสั่งซื้อ',
@@ -155,9 +166,55 @@ form.addEventListener('submit', async function(event) {
     }
 
     const status = statusNames[order.status] || order.status;
-    result.textContent =
-      'เลขงาน: ' + order.job_no + '\nสถานะ: ' + status;
-    result.style.whiteSpace = 'pre-line';
+    // Build UI with textContent to prevent HTML injection from database values.
+    result.replaceChildren();
+    const jobLine = document.createElement('div');
+    jobLine.className = 'tracking-line';
+    jobLine.textContent = 'เลขงาน: ' + order.job_no;
+    result.appendChild(jobLine);
+
+    const statusLine = document.createElement('div');
+    statusLine.className = 'tracking-line';
+    statusLine.textContent = 'สถานะคำสั่งซื้อ: ' + status;
+    result.appendChild(statusLine);
+
+    // Separate read-only RPC; failures must not hide the existing order status.
+    const paymentLine = document.createElement('div');
+    paymentLine.className = 'tracking-line';
+    paymentLine.textContent = 'สถานะการชำระเงิน: กำลังตรวจสอบ...';
+    result.appendChild(paymentLine);
+
+    try {
+      const paymentResponse = await fetch(
+        url.replace(/\/$/, '') + '/rest/v1/rpc/track_shop_payment_status',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': key
+          },
+          body: JSON.stringify({
+            p_job_no: jobNo,
+            p_customer_phone: phone
+          })
+        }
+      );
+      if (!paymentResponse.ok) throw new Error('payment RPC unavailable');
+      const paymentData = await paymentResponse.json();
+      const payment = Array.isArray(paymentData) ? paymentData[0] : paymentData;
+      if (!payment || !payment.payment_status) throw new Error('payment status unavailable');
+
+      const paymentStatus = String(payment.payment_status).toLowerCase();
+      const paymentText = paymentNames[paymentStatus] || 'กรุณาติดต่อร้านเพื่อตรวจสอบ';
+      paymentLine.textContent = 'สถานะการชำระเงิน: ' + paymentText;
+      paymentLine.className = 'tracking-line ' + (
+        paymentStatus === 'paid' ? 'payment-paid' :
+        paymentStatus === 'pending' ? 'payment-pending' : 'payment-warning'
+      );
+    } catch (paymentError) {
+      paymentLine.textContent = 'สถานะการชำระเงิน: ไม่สามารถตรวจสอบได้ในขณะนี้ กรุณาลองใหม่';
+      paymentLine.className = 'tracking-line payment-warning';
+    }
 
   } catch (error) {
     result.textContent = 'เกิดข้อผิดพลาด: ' + error.message;
