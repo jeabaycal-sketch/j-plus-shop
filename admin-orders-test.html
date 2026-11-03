@@ -99,6 +99,21 @@ if (
   notice('ยังไม่สามารถจัดส่งได้ กรุณาตรวจสอบเงินเข้าบัญชีและยืนยันรับชำระเงินก่อน', true);
   return;
 }
+ 
+const allowedNext = {
+  pending: 'preparing',
+  preparing: 'shipping',
+  shipping: 'completed'
+};
+
+if (
+  next !== 'cancelled' &&
+  allowedNext[order.status] !== next
+) {
+  notice('กรุณาเปลี่ยนสถานะตามลำดับ ไม่สามารถข้ามขั้นตอนได้', true);
+  return;
+}
+
 
  if(next==='cancelled'){
   if(!confirm('ยืนยันยกเลิกออเดอร์ '+(order.job_no||id)+' ใช่หรือไม่?\nระบบจะคืนสต๊อกสินค้าโดยอัตโนมัติ และไม่สามารถเปิดออเดอร์นี้กลับได้')){
